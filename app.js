@@ -2,11 +2,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const axios = require('axios');
-const NodeCache = require('node-cache');
 
 const app = express();
-const cache = new NodeCache({ stdTTL: 3600 }); // Cache for 1 hour
-
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 app.use(cors({ credentials: true }));
@@ -14,41 +11,37 @@ app.use(bodyParser.json());
 
 app.get('/api/classify-number', async (req, res) => {
     try {
-        const number = parseInt(req.query.number);
+        const number = Number(req.query.number);
 
         // Input validation
-        if (isNaN(number)) {
-            return res.status(400).json({ number: "alphabet", error: true });
+        if (isNaN(number) || !Number.isInteger(number)) {
+            return res.status(400).json({
+                "number": "invalid",
+                "error": true
+            });
         }
 
-        // Check cache first
-        const cachedData = cache.get(number);
-        if (cachedData) {
-            return res.status(200).json(cachedData);
-        }
-
-        // Parallel processing
-        const funFactPromise = axios.get(`http://numbersapi.com/${number}/math`);
+        const response = await axios.get(`http://numbersapi.com/${number}/math`);
         const properties = [];
 
-        if (isArmstrong(number)) properties.push("armstrong");
-        properties.push(isOdd(number) ? "odd" : "even");
+        if (number >= 0) {
+            if (isArmstrong(number)) properties.push("armstrong");
+            if (isOdd(number)) properties.push("odd");
+            else properties.push("even");
+        } else {
+            if (isOdd(number)) properties.push("odd");
+            else properties.push("even");
+        }
 
-        const [funFactResponse] = await Promise.all([funFactPromise]);
+        return res.status(200).json({
+            "number": number,
+            "is_prime": number > 1 ? isPrime(number) : false,
+            "is_perfect": number > 0 ? isPerfectNumber(number) : false,
+            "properties": properties,
+            "digit_sum": digitalSum(number),
+            "fun_fact": response.data
+        });
 
-        const responseData = {
-            number: number,
-            is_prime: isPrime(number),
-            is_perfect: isPerfectNumber(number),
-            properties: properties,
-            digit_sum: digitalSum(number),
-            fun_fact: funFactResponse.data
-        };
-
-        // Cache the response
-        cache.set(number, responseData);
-
-        return res.status(200).json(responseData);
     } catch (error) {
         return res.status(400).json({ error: error.message });
     }
@@ -61,9 +54,7 @@ app.listen(PORT, () => {
 
 function isPrime(num) {
     if (num < 2) return false;
-    if (num === 2) return true;
-    if (num % 2 === 0) return false;
-    for (let i = 3; i <= Math.sqrt(num); i += 2) {
+    for (let i = 2; i <= Math.sqrt(num); i++) {
         if (num % i === 0) return false;
     }
     return true;
@@ -71,25 +62,33 @@ function isPrime(num) {
 
 function isPerfectNumber(num) {
     if (num <= 1) return false;
+
     let sum = 1;
     for (let i = 2; i <= Math.sqrt(num); i++) {
         if (num % i === 0) {
             sum += i;
-            if (i !== num / i) sum += num / i;
+            if (i !== num / i) {
+                sum += num / i;
+            }
         }
     }
     return sum === num;
 }
 
 function digitalSum(num) {
-    return Math.abs(num).toString().split('').reduce((sum, digit) => sum + +digit, 0);
+    const digits = String(Math.abs(num)).split('').map(Number);
+    const sum = digits.reduce((acc, digit) => acc + digit, 0);
+    return num < 0 ? -sum : sum;
 }
 
 function isArmstrong(num) {
-    const numStr = Math.abs(num).toString();
+    if (num < 0) return false;
+    const numStr = String(num);
     const power = numStr.length;
-    const sum = numStr.split('').reduce((acc, digit) => acc + Math.pow(+digit, power), 0);
-    return sum === Math.abs(num);
+    const sum = numStr
+        .split('')
+        .reduce((acc, digit) => acc + Math.pow(parseInt(digit), power), 0);
+    return sum === num;
 }
 
 function isOdd(num) {
