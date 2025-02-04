@@ -16,7 +16,7 @@ app.get('/api/classify-number', async(req,res) => {
         // Input validation
         if (isNaN(number)) {
             return res.status(400).json({
-                "number":"alphabet",
+                "number":number,
                 "error":true
             });
         }
@@ -82,6 +82,7 @@ function digitalSum(num) {
 
 // Function to check if a number is armstrong or  not
 function isArmstrong(num) {
+    if(num<0) return false
     const numStr = String(num);
     const power = numStr.length;
     const sum = numStr
