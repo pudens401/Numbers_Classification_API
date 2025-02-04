@@ -11,7 +11,7 @@ This is a simple Node.js API that classifies a given number by checking its prop
 ### Steps to Run Locally
 1. Clone the repository:
    ```sh
-   git clone https://github.com/pudens401/Number_Classification_API.git
+   git clone https://github.com/pudens401/Numbers_Classification_API.git
    ```
 2. Navigate to the project directory:
    ```sh

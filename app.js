@@ -21,11 +21,11 @@ app.get('/api/classify-number', async(req,res) => {
             });
         }
 
-        const response = await axios.get(`http://numbersapi.com/${number}`)
+        const response = await axios.get(`http://numbersapi.com/${number}/math`)
         const properties = [];
 
         if(isArmstrong(number)) properties.push("armstrong")
-            
+
         if(isOdd(number)) properties.push("odd")
         else properties.push("even")
 
