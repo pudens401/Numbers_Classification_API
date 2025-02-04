@@ -36,10 +36,13 @@ This is a simple Node.js API that classifies a given number by checking its prop
 - **Method:** GET
 - **Request Format:** Query parameter (`number`)
 - **Response Format:** JSON
+- **Hosted URL:** `https://hng-1-number-classification-api.onrender.com/api/classify-number?number=<your_number>`
 
 ### Example Request
 ```
 http://localhost:8000/api/classify-number?number=28
+https://hng-1-number-classification-api.onrender.com/api/classify-number?number=28
+
 ```
 
 ### Example Response
