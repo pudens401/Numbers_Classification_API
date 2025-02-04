@@ -1,56 +1,69 @@
-const express = require('express')
-const bodyParser = require('body-parser')
-const cors = require('cors')
-const axios = require('axios')
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const axios = require('axios');
+const NodeCache = require('node-cache');
 
-const app = express()
-app.use(express.json({limit:'10mb'}))
-app.use(express.urlencoded({limit:'100mb',extended:true}))
-app.use(cors({credentials:true}))
-app.use(bodyParser.json())
+const app = express();
+const cache = new NodeCache({ stdTTL: 3600 }); // Cache for 1 hour
 
-app.get('/api/classify-number', async(req,res) => {
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
+app.use(cors({ credentials: true }));
+app.use(bodyParser.json());
+
+app.get('/api/classify-number', async (req, res) => {
     try {
         const number = parseInt(req.query.number);
-        
+
         // Input validation
         if (isNaN(number)) {
-            return res.status(400).json({
-                "number":"alphabet",
-                "error":true
-            });
+            return res.status(400).json({ number: "alphabet", error: true });
         }
 
-        const response = await axios.get(`http://numbersapi.com/${number}/math`)
+        // Check cache first
+        const cachedData = cache.get(number);
+        if (cachedData) {
+            return res.status(200).json(cachedData);
+        }
+
+        // Parallel processing
+        const funFactPromise = axios.get(`http://numbersapi.com/${number}/math`);
         const properties = [];
 
-        if(isArmstrong(number)) properties.push("armstrong")
+        if (isArmstrong(number)) properties.push("armstrong");
+        properties.push(isOdd(number) ? "odd" : "even");
 
-        if(isOdd(number)) properties.push("odd")
-        else properties.push("even")
+        const [funFactResponse] = await Promise.all([funFactPromise]);
 
-        return res.status(200).json({
-            "number": number,
-            "is_prime": isPrime(number),
-            "is_perfect": isPerfectNumber(number),
-            "properties": properties,
-            "digit_sum": digitalSum(number),
-            "fun_fact": response.data
-        })
-        
+        const responseData = {
+            number: number,
+            is_prime: isPrime(number),
+            is_perfect: isPerfectNumber(number),
+            properties: properties,
+            digit_sum: digitalSum(number),
+            fun_fact: funFactResponse.data
+        };
+
+        // Cache the response
+        cache.set(number, responseData);
+
+        return res.status(200).json(responseData);
     } catch (error) {
-        return res.status(400).json({error: error.message})
+        return res.status(400).json({ error: error.message });
     }
-})
+});
 
-const PORT = process.env.PORT || 8000
+const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
-    console.log(`Connected to server on ${PORT}`)
-})
+    console.log(`Connected to server on ${PORT}`);
+});
 
 function isPrime(num) {
     if (num < 2) return false;
-    for (let i = 2; i <= Math.sqrt(num); i++) {
+    if (num === 2) return true;
+    if (num % 2 === 0) return false;
+    for (let i = 3; i <= Math.sqrt(num); i += 2) {
         if (num % i === 0) return false;
     }
     return true;
@@ -58,39 +71,27 @@ function isPrime(num) {
 
 function isPerfectNumber(num) {
     if (num <= 1) return false;
-    
-    let sum = 1; 
+    let sum = 1;
     for (let i = 2; i <= Math.sqrt(num); i++) {
         if (num % i === 0) {
             sum += i;
-            // Only add the pair if it's different from i
-            if (i !== num / i) {
-                sum += num / i;
-            }
+            if (i !== num / i) sum += num / i;
         }
     }
     return sum === num;
 }
 
-
-// Fucntion to add all digits of a number
 function digitalSum(num) {
-    return String(num)
-        .split('')
-        .reduce((sum, digit) => sum + parseInt(digit), 0);
+    return Math.abs(num).toString().split('').reduce((sum, digit) => sum + +digit, 0);
 }
 
-// Function to check if a number is armstrong or  not
 function isArmstrong(num) {
-    const numStr = String(num);
+    const numStr = Math.abs(num).toString();
     const power = numStr.length;
-    const sum = numStr
-        .split('')
-        .reduce((acc, digit) => acc + Math.pow(parseInt(digit), power), 0);
-    return sum === parseInt(num);
+    const sum = numStr.split('').reduce((acc, digit) => acc + Math.pow(+digit, power), 0);
+    return sum === Math.abs(num);
 }
 
-// function to  find if a number is odd or not
 function isOdd(num) {
     return num % 2 !== 0;
 }
