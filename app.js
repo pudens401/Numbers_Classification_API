@@ -77,7 +77,7 @@ function isPerfectNumber(num) {
 // Fucntion to add all digits of a number
 function digitalSum(num) {
     if (num < 0) {
-        return -String(-num)  // Convert to positive for processing
+        return String(-num)  // Convert to positive for processing
             .split('')
             .reduce((sum, digit) => sum + parseInt(digit), 0);
     }
